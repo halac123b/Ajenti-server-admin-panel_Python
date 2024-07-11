@@ -1,0 +1,8 @@
+# This file list all file need to be included when build package
+## Thông thường chỉ có file code mới đc include vào package.
+## setuptools tự detect và đọc data từ file này
+
+recursive-include aj * *.*
+recursive-exclude aj *~ *.pyc
+include Makefile
+include requirements.txt
