@@ -1,6 +1,7 @@
 def str_fsize(sz):
     """
-    Formats file size as string (i.e., 1.2 Mb)
+    Formats file size as string (i.e., 1.2 Mb)\n
+    Quy đổi từ byte sang KB, MB, GB, TB
     """
     if sz < 1024:
         return f"{sz:.1f} bytes"
