@@ -7,3 +7,4 @@ def public(f):
 
     if f.__name__ not in _all:  # Prevent duplicates if run from an IDE.
         _all.append(f.__name__)
+    return f
