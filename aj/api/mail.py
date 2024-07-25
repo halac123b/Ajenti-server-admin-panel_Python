@@ -9,4 +9,4 @@ DEFAULT_TEMPLATES = {
 
 class Mail:
     def __init__(self):
-        self.enabled = aj.config
+        self.enabled = aj.config.data["email"].get("enable", False)
