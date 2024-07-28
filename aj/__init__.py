@@ -1,4 +1,7 @@
 import platform as pyplatform
+import subprocess
+import distro
+import os
 
 __version__ = "2.2.10"
 
@@ -104,11 +107,43 @@ def detect_platform():
         res = pyplatform.system().lower()
         return res, res
 
-    dist = ""
-    (major, minor, _) = pyplatform.python_version_tuple()
-    major = int(major)
-    minor = int(minor)
-    if (major * 10 + minor) >= 36:
-        import distro
+    dist = distro.name()
+    # Kiểm tra distribution trên các OS python k tự detect đc
+    if dist == "":
+        if os.path.exists("/etc/os-release"):
+            release = open("/etc/os-release").read()
+            if "Arch Linux" in release:
+                dist = "arch"
+    if dist == "":
+        if os.path.exists("/etc/system-release"):
+            release = open("/etc/system-release").read()
+            if "Amazon Linux AMI" in release:
+                dist = "centos"
+    if dist == "":
+        try:
+            # Nếu tìm trong file vẫn k có, tức có vấn đề với OS, check file OS và log lỗi
+            dist = (
+                subprocess.check_output(["strings", "-4", "/etc/issue"])
+                .split()[0]
+                .strip()
+                .decode()
+            )
+        except subprocess.CalledProcessError as e:
+            dist = "unknown"
 
-        dist = distro.id()
+    # Xử lý string kết quả
+    res = dist.strip(" '\"\t\n\r").lower()
+    if res in base_mapping:
+        res = base_mapping[res]
+
+    res_mapped = res
+    if res in platform_mapping:
+        res_mapped = platform_mapping[res]
+    return res, res_mapped
+
+
+def detect_platform_string():
+    try:
+        return subprocess.check_output(["lsb_release", "-sd"]).strip().decode()
+    except subprocess.CalledProcessError as e:
+        return subprocess.check_output(["uname", "-mrs"]).strip().decode()
