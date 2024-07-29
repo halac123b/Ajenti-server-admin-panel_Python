@@ -1,4 +1,6 @@
+import logging
 import platform as pyplatform
+import signal
 import subprocess
 import distro
 import os
@@ -147,3 +149,24 @@ def detect_platform_string():
         return subprocess.check_output(["lsb_release", "-sd"]).strip().decode()
     except subprocess.CalledProcessError as e:
         return subprocess.check_output(["uname", "-mrs"]).strip().decode()
+    except FileNotFoundError:
+        logging.warning("Please install lsb_release to detect the platform!")
+        return subprocess.check_output(["uname", "-mrs"]).strip().decode()
+
+
+def init():
+    import aj
+
+    aj.version = detect_version()
+    if aj.platform is None:
+        aj.platform_unmapped, aj.platform = detect_platform()
+    else:
+        logging.warning("Platform ID was enforced by commandline!")
+        aj.platform_unmapped = aj.platform
+
+    aj.platform_string = detect_platform_string()
+    aj.python_version = detect_python()
+
+
+def exit():
+    os.kill(os.getpid(), signal.SIGQUIT)
