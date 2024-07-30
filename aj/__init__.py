@@ -170,3 +170,8 @@ def init():
 
 def exit():
     os.kill(os.getpid(), signal.SIGQUIT)
+
+
+def restart():
+    server.restart_marker = True
+    server.stop()
