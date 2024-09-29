@@ -8,6 +8,7 @@ import socketio
 import importlib
 import aj
 import aj.log
+import aj.config
 import jadi
 
 # Init Monkey-patching
