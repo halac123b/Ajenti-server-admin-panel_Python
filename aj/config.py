@@ -13,6 +13,7 @@ class BaseConfig():
 
     """
     def __init__(self):
+        # Dictionary chứa các config data
         self.data = None
 
     def load(self):
@@ -28,6 +29,7 @@ class BaseConfig():
         raise NotImplementedError()
     
     def ensure_structure(self):
+        '''Set up dictionary data với các giá trị default'''
         # Global options
         self.data.setdefault('name', None)
         self.data.setdefault('trusted_domains', [])
@@ -75,10 +77,68 @@ class BaseConfig():
     def migrate_users_to_own_configfile(self):
         users_path = self.data['auth']['users_file']
 
+        # Nếu file đã có sẵn, chuyển thành file backup (.bak)
         if os.path.isfile(users_path):
             logging.info(f"{users_path} already existing, backing it up")
             os.rename(users_path, users_path + '.bak')
         
+        # Save data from YAML file
         to_write = {'users': self.data['auth']['users']}
         with open(users_path, 'w') as f:
            f.write(yaml.safe_dump(to_write, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8'))
+
+        del self.data['auth']['users']  # Xoá data cũ đi
+        # self.save()
+        logging.info(f"{users_path} correctly written")
+        
+    def get_non_sensitive_data(self):
+        return {
+            'color': self.data['color'],
+            'language': self.data['language'],
+            'name': self.data['name'],
+            'session_max_time': self.data['session_max_time'],
+        }
+    
+class SmtpConfig(BaseConfig):
+    """
+    Class to handle the smtp config file in order to store credentials of the email
+    server relay.
+    Config file is located at /etc/ajenti/smtp.yml and should have the following
+    structure :
+    smtp:
+    port: starttls or ssl
+    server: myserver.domain.com
+    user: user to authenticate
+    password: password of the mail user
+    """
+    def __init__(self):
+        BaseConfig.__init__(self)
+        self.data = {}
+        self.path = '/etc/ajenti/smtp.yml'
+
+    def ensure_structure(self):
+        self.data.setdefault('smtp', {})
+        self.data['smtp'].setdefault('password', None)
+        self.data['smtp'].setdefault('port', None)
+        self.data['smtp'].setdefault('server', None)
+        self.data['smtp'].setdefault('user', None)
+
+    def get_smtp_password(self):
+        # if smtp.yml is not provided
+        if self.data['smtp']['password'] is None:
+            return ''
+        with open(self.path, 'r') as smtp:
+            smtp_config = yaml.load(smtp, Loader=yaml.SafeLoader).get('smtp', {})
+        return smtp_config.get('password', None)
+    
+    def load(self):
+        if not os.path.exists(self.path):
+            logging.error(f'Smtp credentials file "{self.path}" not found')
+        else:
+            if os.geteuid() == 0:
+                os.chmod(self.path, 384)  # 0o600
+                with open(self.path, 'r') as smtp:
+                    self.data = yaml.load(smtp, Loader=yaml.SafeLoader) or {}
+                    # Prevent password leak
+                    self.ensure_structure()
+                    self.data['smtp']['password'] = ''
