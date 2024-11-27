@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import yaml
 
 class BaseConfig():
@@ -135,10 +136,64 @@ class SmtpConfig(BaseConfig):
         if not os.path.exists(self.path):
             logging.error(f'Smtp credentials file "{self.path}" not found')
         else:
-            if os.geteuid() == 0:
+            if os.geteuid() == 0:   # If run with admin (sudo)
                 os.chmod(self.path, 384)  # 0o600
                 with open(self.path, 'r') as smtp:
                     self.data = yaml.load(smtp, Loader=yaml.SafeLoader) or {}
                     # Prevent password leak
                     self.ensure_structure()
                     self.data['smtp']['password'] = ''
+
+    def save(self, data):
+        # Prevent emptying password from settings plugin
+        if not data['smtp']['password']:
+            data['smtp']['password'] = self.get_smtp_password()
+        # Mở file ra write data mới vào
+        with open(self.path, 'w') as smtp:
+            smtp.write(
+                yaml.safe_dump(
+                    data,
+                    default_flow_style=False,
+                    encoding='utf-8',
+                    allow_unicode=True
+                ).decode('utf-8')
+            )
+        
+
+class AjentiUsers(BaseConfig):
+    """
+    Class to handle the users config file for the auth-user plugin.
+    Config file is located at /etc/ajenti/users.yml and should have the following
+    structure:
+    users:
+      username:
+        email: ...@...
+        password: hash
+        permissions: {}
+        uid: int
+        fs_root: file system root directory
+    """
+    def __init__(self, path):
+        BaseConfig.__init__(self)
+        self.data = None
+        self.path = os.path.abspath(path)
+    
+    def __str__(self):
+        return self.path
+    
+    def load(self):
+        '''Load user data from config file'''
+        if not os.path.exists(self.path):   # If path not exist
+            logging.error(f'Users file "{self.path}" not found')
+            self.data = {'users': {}}
+        else:
+            if os.geteuid() == 0:
+                os.chmod(self.path, 384)  # 0o600
+            with open(self.path, 'r') as users:
+                self.data = yaml.load(users, Loader=yaml.SafeLoader)
+            if self.data['users'] is None:
+                self.data['users'] = {}
+    
+    def save(self):
+        with open(self.path, 'w') as f:
+            f.write(yaml.safe_dump(self.data, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8'))

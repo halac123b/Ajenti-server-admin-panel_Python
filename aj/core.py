@@ -76,3 +76,6 @@ def run(config=None, plugin_providers=None, product_name='ajenti', dev_mode=Fals
 
     aj.config.load()
     aj.config.ensure_structure()
+
+    logging.info("Loading users from /etc/ajenti/users.yml")
+    aj.users = aj.config.AjentiUsers(aj.config.data['auth']['users_file'])
