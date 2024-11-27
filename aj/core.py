@@ -109,3 +109,9 @@ def run(config=None, plugin_providers=None, product_name='ajenti', dev_mode=Fals
     # Trong package gettext, _() thường sẽ tự động dịch text, nhưng ta có tool khác xử lí nên k dùng
     # Override lại hàm này để vô hiệu hoá gettext
     __builtins__['_'] = lambda x: x
+
+    # Logging info about this Ajenti version
+    logging.info(f'Ajenti Core {aj.version}')
+    logging.info(f'Master PID - {os.getpid()}')
+    logging.info(f'Detected platform: {aj.platform} / {aj.platform_string}')
+    logging.info(f'Python version: {aj.python_version}')
