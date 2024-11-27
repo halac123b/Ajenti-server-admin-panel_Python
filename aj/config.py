@@ -99,7 +99,8 @@ class BaseConfig():
             'name': self.data['name'],
             'session_max_time': self.data['session_max_time'],
         }
-    
+
+# SMTP: Simple mail transfer protocol
 class SmtpConfig(BaseConfig):
     """
     Class to handle the smtp config file in order to store credentials of the email
@@ -197,3 +198,79 @@ class AjentiUsers(BaseConfig):
     def save(self):
         with open(self.path, 'w') as f:
             f.write(yaml.safe_dump(self.data, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8'))
+
+# TFA: Two Factor Auth
+class TFAConfig(BaseConfig):
+    """
+    Class to handle the TFA yaml file which contains secrets for e.g. TOTP
+    Time-based one-time password: OTP đc tạo dựa trên data thời gian hiện tại
+    Config file is located at /etc/ajenti/tfa.yml and should have the following
+    structure :
+    totp:
+      user@auth_id:
+        secret_id:
+          created: DATE
+          description: DESCRIPTION
+          secret: random key in base32 with 32 chars
+    """
+    def __init__(self):
+        BaseConfig.__init__(self)
+        self.data = {}
+        self.path = '/etc/ajenti/tfa.yml'
+        self.verify_totp = {}
+
+    def get_user_totp_secrets(self, userid):
+        with open(self.path, 'r') as tfa:
+            tfa_config = yaml.load(tfa, Loader=yaml.SafeLoader).get('users', {})
+            user_secrets = tfa_config.get(userid, {}).get('totp', [])
+        return [details['secret'] for details in user_secrets]
+    
+    def append_user_totp(self, data):
+        config = self._read()
+        userid = data['userid']
+        if config['users'].get(userid, {}).get('totp', []):
+            config['users'][userid]['totp'].append(data['secret_details'])
+            self.verify_totp[userid] = None
+        else:
+            config['users'][userid] = {'totp': [data['secret_details']]}
+        self._save(config)
+        # Save data rồi clear các cache vừa chạy
+        self.load()
+
+    def _read(self):
+        '''Load config data from file'''
+        if os.path.exists(self.path):
+            with open(self.path, 'r') as tfa:
+                return yaml.load(tfa, Loader=yaml.SafeLoader)
+        else:
+            return {'users': {}}
+        
+    def _save(self, data):
+        '''Save data to file'''
+        with open(self.path, 'w') as tfa:
+            tfa.write(
+                yaml.safe_dump(
+                    data,
+                    default_flow_style=False,
+                    encoding='utf-8',
+                    allow_unicode=True
+                ).decode('utf-8')
+           )
+        os.chmod(self.path, 384)  # 0o600
+
+    def load(self):
+        if os.path.exists(self.path):
+            os.chmod(self.path, 384)  # 0o600
+            with open(self.path, 'r') as tfa:
+                self.data = yaml.load(tfa, Loader=yaml.SafeLoader).get('users', {})
+            # Don't keep secrets in memory and prepare verify values per user involved
+            for userid, tfa_methods in self.data.items():
+                self.verify_totp[userid] = None
+                for _, values in tfa_methods.items():
+                    for entry in values:
+                        entry['secret'] = ''
+        else:
+            self.ensure_structure()
+
+    def ensure_structure(self):
+        self.data.setdefault('users', {})

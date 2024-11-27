@@ -1,15 +1,19 @@
+import locale
 import gevent
 import threading
 import logging
 import sys
 import os
 import subprocess
+import gevent.monkey
 import socketio
 import importlib
 import aj
 import aj.log
 import aj.config
 import jadi
+
+import aj.log
 
 # Init Monkey-patching
 gevent.monkey.patch_all(select=True, thread=True, aggressive=False, subprocess=True)
@@ -79,3 +83,29 @@ def run(config=None, plugin_providers=None, product_name='ajenti', dev_mode=Fals
 
     logging.info("Loading users from /etc/ajenti/users.yml")
     aj.users = aj.config.AjentiUsers(aj.config.data['auth']['users_file'])
+    aj.users.load()
+
+    logging.info('Loading smtp config from /etc/ajenti/smtp.yml')
+    aj.smtp_config = aj.config.SmtpConfig()
+    aj.smtp_config.load()
+    aj.smtp_config.ensure_structure()
+
+    logging.info('Loading tfa config from /etc/ajenti/tfa.yml')
+    aj.tfa_config = aj.config.TFAConfig()
+    aj.tfa_config.load()
+    aj.tfa_config.ensure_structure()
+
+    if aj.debug:
+        logging.warning('Debug mode')
+    if aj.dev:
+        logging.warning('Dev mode')
+    
+    # Set locale format to default
+    try:
+        locale.setlocale(locale.LC_ALL, '')
+    except locale.Error:
+        logging.warning('Couldn\'t set default locale')
+
+    # Trong package gettext, _() thường sẽ tự động dịch text, nhưng ta có tool khác xử lí nên k dùng
+    # Override lại hàm này để vô hiệu hoá gettext
+    __builtins__['_'] = lambda x: x
