@@ -115,3 +115,13 @@ def run(config=None, plugin_providers=None, product_name='ajenti', dev_mode=Fals
     logging.info(f'Master PID - {os.getpid()}')
     logging.info(f'Detected platform: {aj.platform} / {aj.platform_string}')
     logging.info(f'Python version: {aj.python_version}')
+
+    # Load plugins
+    aj.plugins.PluginManager.get(aj.context).load_all_from(aj.plugin_providers)
+    if len(aj.plugins.PluginManager.get(aj.context)) == 0:
+        logging.warning('No plugins were loaded!')
+
+    if aj.config.data['bind']['mode'] == 'unix':
+        path = aj.config.data['bind']['socket']
+        if os.path.exists(path):
+            os.unlink(path)
