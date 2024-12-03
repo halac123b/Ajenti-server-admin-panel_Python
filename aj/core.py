@@ -1,4 +1,5 @@
 import locale
+import socket
 import gevent
 import threading
 import logging
@@ -6,8 +7,6 @@ import sys
 import os
 import subprocess
 import gevent.monkey
-import socketio
-import importlib
 import aj
 import aj.log
 import aj.config
@@ -124,4 +123,38 @@ def run(config=None, plugin_providers=None, product_name='ajenti', dev_mode=Fals
     if aj.config.data['bind']['mode'] == 'unix':
         path = aj.config.data['bind']['socket']
         if os.path.exists(path):
-            os.unlink(path)
+            os.remove(path)
+        
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            listener.bind(path)
+        except OSError:
+            logging.error(f'Could not bind to {path}')
+            sys.exit(1)
+
+    if aj.config.data['bind']['mode'] == 'tcp':
+        host = aj.config.data['bind']['host']
+        port = aj.config.data['bind']['port']
+
+       # External TCP socket
+        listener = socket.socket(
+            socket.AF_INET6 if ':' in host else socket.AF_INET, socket.SOCK_STREAM
+        )
+
+        if aj.platform not in ['freebsd', 'osx']:
+            try:
+                listener.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 1)
+            except socket.error:
+                logging.warning('Could not set TCP_CORK')
+        # cho phép bind External socket đến 1 port đã đc cấp phát cho 1 socket trc đó vừa đc sử dụng xong, mà k cần lặp lại quá trình release resource rồi cấp phát lại
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        logging.info(f'Binding to [{host}]:{port}')
+
+        try:
+            listener.bind((host, port))
+        except socket.error as e:
+            logging.error(f'Could not bind: {str(e)}')
+            sys.exit(1)
+    
+    # Open socket with max 10 connection in queue
+    listener.listen(10)
