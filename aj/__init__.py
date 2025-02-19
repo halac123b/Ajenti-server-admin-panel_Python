@@ -64,6 +64,8 @@ __all__ = [
     "python_version",
 ]
 
+worker = None
+
 
 def detect_version():
     """Version of package"""
