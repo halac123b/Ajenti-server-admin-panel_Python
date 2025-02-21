@@ -23,3 +23,9 @@ class GateStreamResponse():
     def __init__(self, _id, obj):
         self.id = _id
         self.object = obj
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'object': self.object,
+        }
