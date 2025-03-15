@@ -1,3 +1,5 @@
+import base64
+import pickle
 from aj.api.http import BaseHttpHandler
 
 class HttpMiddlewareAggregator(BaseHttpHandler):
@@ -61,3 +63,26 @@ class HttpContext():
         self.url_cgi_query = None
         self.prefix = None
         self.method = self.env['REQUEST_METHOD'].upper()
+    
+    @classmethod
+    def deserialize(cls, data):
+        data = pickle.loads(base64.b64decode(data))
+        self = cls(data['env'])
+        self.path = data['path']
+        self.headers = data['headers']
+        self.body = base64.b64decode(data['body']) if data['body'] else None
+        self.query = data['query']
+        self.prefix = data['prefix']
+        self.method = data['method']
+        return self
+    
+    def add_header(self, key, value):
+        """
+        Adds a given HTTP header to the response
+
+        :param key: header name
+        :type  key: str
+        :param value: header value
+        :type  value: str
+        """
+        self.headers += [(key, value)]
