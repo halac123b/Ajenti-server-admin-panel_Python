@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import gevent
 from gevent.lock import RLock
 
 MSG_CONTINUATION_MARKER = '\x00\x00\x00continued\x00\x00\x00'
@@ -24,6 +25,26 @@ class GateStreamServerEndpoint():
         self.buffer = {}
         self.buffer_lock = RLock()
         self.log = False
+
+    def buffer_single_response(self, timeout):
+        try:
+            with self.buffer_lock:
+                data = self.recv_single(timeout)
+                if not data:
+                    return
+                
+    def recv_single(self, timeout):
+        try:
+            if timeout:
+                with gevent.Timeout(timeout) as t:
+                    data = self.pipe.get(t)
+            else:
+                data = self.pipe.get()
+
+        except gevent.Timeout:
+            return None
+        except EOFError:
+            return None
 
 class GateStreamWorkerEndpoint():
     def __init__(self, pipe):

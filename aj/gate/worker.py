@@ -85,6 +85,33 @@ class Worker():
 
                     socket_namespaces[nsid].process_event(event, msg)
 
+                    if event == 'disconnect':
+                        socket_namespaces[nsid].destroy()
+                        logging.debug('Socket disconnected, destroying endpoints')
+                    
+                if rq.object['type'] == 'config-data':
+                    logging.debug('Received a config update')
+                    aj.config.data = rq.object['data']['config']
+                    aj.users.data = rq.object['data']['users']
+                    aj.tfa_config.data = rq.object['data']['tfa']
+                    self._master_config_reloaded.set()
+                
+                if rq.object['type'] == 'session-list':
+                    logging.debug('Received a session list update')
+                    aj.sessions = rq.object['data']
+
+                if rq.object['type'] == 'verify-totp':
+                    userid = rq.object['data']['userid']
+                    result = rq.object['data']['result']
+                    aj.tfa_config.verify_totp[userid] = result
+                
+                if rq.object['type'] == 'update-tfa-config':
+                    aj.tfa_config.data = rq.object['data']
+
+        except Exception:
+            logging.error('Worker crashed!')
+            traceback.print_exc()
+
     def demote(self, uid, gid=None):
         try:
             # Get username of this id
@@ -166,3 +193,8 @@ class WorkerSocketNamespace():
                 except Exception:
                     logging.error('Exception in socket event handler')
                     traceback.print_exc()
+    
+    def destroy(self):
+        logging.debug(f'Socket namespace {self.id} is being destroyed')
+        for endpoint in self.endpoints:
+            endpoint.destroy()

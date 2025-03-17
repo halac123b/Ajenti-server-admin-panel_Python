@@ -46,3 +46,9 @@ class WorkerGate():
     def _target(self, stream=None, _pipe=None):
         self.worker = Worker(stream, self)
         self.worker.run()
+
+    def _stream_reader(self):
+        try:
+            while True:
+                resp = self.stream.buffer_single_response(None)
+                

@@ -34,5 +34,27 @@ class SocketEndpoint():
     def __init__(self, context):
         self.context = context
         self.greenlets = []
+
+    def on_connect(self, message):
+        """
+        Called on a successful client connection
+        """
     
+    def on_disconnect(self, message):
+        """
+        Called on a client disconnect
+        """
+
+    def on_message(self, message, *args):
+        """
+        Called when a socket message arrives to this endpoint
+        """
+    
+    def destroy(self):
+        """
+        Destroys endpoint, killing the running greenlets
+        """
+        for gl in self.greenlets:
+            gl.kill(block=False)
+
     
