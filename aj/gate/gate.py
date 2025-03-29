@@ -1,7 +1,10 @@
+import hashlib
 import logging
 import pickle
 import gevent
 import gipc
+
+import aj
 from aj.util.broadcast_queue import BroadcastQueue
 from aj.gate.stream import GateStreamServerEndpoint, GateStreamWorkerEndpoint
 from aj.gate.worker import Worker
@@ -51,4 +54,30 @@ class WorkerGate():
         try:
             while True:
                 resp = self.stream.buffer_single_response(None)
+                if not resp:
+                    return
+                self.stream.ack_response(resp.id)
+                if resp.object['type'] == 'socket':
+                    self.q_socket_messages.broadcast(resp)
+                if resp.object['type'] == 'http':
+                    self.q_http_replies.broadcast(resp)
+
+                if resp.object['type'] == 'terminate':
+                    if self.session != self.gateway_middleware:
+                        # Not the restricted session, we can disable it
+                        self.session.deactivate()
+
+                if resp.object['type'] == 'restart-master':
+                    aj.restart()
+
+                if resp.object['type'] == 'update-sessionlist':
+                    self.gateway_middleware.broadcast_session_list()
+
+    def send_session_list(self):
+        logging.debug(f'Sending a session list update to {self.name}')
+        self.stream.send({
+            'type': 'session-list',
+            'data': {hashlib.sha3_256(key.encode()).hexdigest(): session.serialize()
+                     for key, session in self.gateway_middleware.sessions.items()},
+        })
                 
