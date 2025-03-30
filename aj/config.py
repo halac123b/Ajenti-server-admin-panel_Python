@@ -237,6 +237,21 @@ class TFAConfig(BaseConfig):
         # Save data rồi clear các cache vừa chạy
         self.load()
 
+    def delete_user_totp(self, data):
+        config = self._read()
+        userid = data['userid']
+        totps = config['users'].get(userid, {}).get('totp', [])
+        for secret in totps:
+            if str(secret['created']) == data['timestamp']:
+                if len(totps) == 1:
+                    # Remove completely user entry
+                    del config['users'][userid]
+                else:
+                    config['users'][userid]['totp'].remove(secret)
+                break
+        self._save(config)
+        self.load()
+
     def _read(self):
         '''Load config data from file'''
         if os.path.exists(self.path):

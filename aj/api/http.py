@@ -23,7 +23,7 @@ class HttpMiddleware(BaseHttpHandler):
         pass
 
 @jadi.interface
-class SocketEndpoint():
+class SocketEndpoint:
     """
     Base interface for Socket.IO endpoints.
     """
@@ -56,5 +56,8 @@ class SocketEndpoint():
         """
         for gl in self.greenlets:
             gl.kill(block=False)
+
+    @classmethod
+    def classes(cls): ...   # In decorator
 
     

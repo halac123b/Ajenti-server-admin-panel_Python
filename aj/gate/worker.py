@@ -14,7 +14,7 @@ from aj.auth import AuthenticationMiddleware, AuthenticationService
 from aj.routing import CentralDispatcher
 import gevent.event
 
-class Worker():
+class Worker:
     def __init__(self, stream, gate):
         aj.worker = self
         self.stream = stream
@@ -174,7 +174,42 @@ class Worker():
             })
             self.stream.reply(rq, response_object)
 
-class WorkerSocketNamespace():
+    def terminate(self):
+        self.send_to_upstream({
+            'type': 'terminate',
+        })
+
+    def change_totp(self, data):
+        self.send_to_upstream({
+            'type': 'change-totp',
+            'data': data,
+        })
+
+    def verify_totp(self, userid, code):
+        self.send_to_upstream({
+            'type': 'verify-totp',
+            'userid': userid,
+            'code': code,
+        })
+
+    def update_sessionlist(self):
+        self.send_to_upstream({
+            'type': 'update-sessionlist',
+        })
+
+    def restart_master(self):
+        self.send_to_upstream({
+            'type': 'restart-master',
+        })
+
+    def reload_master_config(self):
+        self.send_to_upstream({
+            'type': 'reload-config',
+        })
+        self._master_config_reloaded.wait()
+        self._master_config_reloaded.clear()
+
+class WorkerSocketNamespace:
     def __init__(self, context, _id):
         self.context = context
         self.id = _id

@@ -6,7 +6,7 @@ from aj.gate.gate import WorkerGate
 
 
 @jadi.service
-class GateMiddleware():
+class GateMiddleware:
     def __init__(self, context):
         self.context = context
         self.sessions = {}
@@ -35,3 +35,9 @@ class GateMiddleware():
         for session in self.sessions.values():
             if not session.is_dead():
                 session.gate.send_session_list()
+
+    def broadcast_config_data(self):
+        self.restricted_gate.send_config_data()
+        for session in self.sessions.values():
+            if not session.is_dead():
+                session.gate.send_config_data()

@@ -47,6 +47,8 @@ plugin_providers = []
 
 sessions = {}
 
+tfa_config = None
+
 python_version = None
 
 # Tên của các field có thể import trong package này
